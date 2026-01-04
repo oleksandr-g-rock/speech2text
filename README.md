@@ -1,47 +1,88 @@
 <div align="center">
+<img src="logo_s2t.png" alt="Voice Transcriber Logo" width="200"/>
 
-<img src="./logo_s2t.png" alt="Bot Logo" width="200" height="200">
+# 🎙️ AI Voice Transcriber Bot
+**Turn Voice into Text with the Power of AI & Telegram**
 
-# 🎙️ Telegram Voice Transcriber
-
-**Turn your voice notes into text instantly.**
-<br>
-A robust, asynchronous Telegram bot that transcribes voice messages using OpenAI's Whisper model (or self-hosted alternatives).
-
-[![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED.svg)](https://www.docker.com/)
+[![Aiogram](https://img.shields.io/badge/Aiogram-3.x-blueviolet.svg)](https://docs.aiogram.dev/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 </div>
 
 ---
 
-## ⚡ Features
+## 🚀 The Mission
+Stop wasting time listening to long, rambling voice notes. **AI Voice Transcriber** is a high-performance Telegram bot that converts audio messages into clean, readable text instantly. 
 
-* **🗣️ Instant Transcription:** Send a voice message, get text back.
-* **🐳 Docker Native:** Easy to deploy anywhere (VPS, Local, Cloud).
-* **🔄 Webhook Architecture:** Uses `aiohttp` webhooks for instant response times (no polling lag).
-* **✂️ Smart Splitting:** Automatically splits long transcriptions into multiple messages to bypass Telegram's 4096 character limit.
-* **⏳ Long Audio Support:** Optimized with a 15-minute timeout window to handle large files and slow hardware without crashing.
-* **🌍 Universal API:** Works with any OpenAI-compatible Whisper endpoint (Local Whisper, Faster-Whisper, etc.).
+Built with **Aiogram 3.x** and powered by **OpenAI Whisper**, it’s designed for speed, privacy, and handling even the longest "podcast-style" voice messages your friends send you.
 
 ---
 
-## 🛠️ Prerequisites
-
-1.  **Telegram Bot Token:** Get one from [@BotFather](https://t.me/BotFather).
-2.  **Whisper API Endpoint:** You need a running instance of Whisper.
-    * *Option A (Recommended):* Self-hosted Whisper (e.g., via Docker).
-    * *Option B:* Any API that mimics the OpenAI `/v1/audio/transcriptions` format.
-3.  **Public Domain (HTTPS):** Required for Webhooks (e.g., `https://your-domain.com`).
+## ✨ Superpowers
+* **⚡ Webhook Powered:** Zero-latency response. It hears the message and starts working immediately.
+* **🧠 Language Genius:** Automatically detects the language (English, Spanish, Ukrainian, etc.) without you telling it.
+* **📏 Smart Chunking:** Bypasses Telegram's 4096-character limit by intelligently splitting long transcripts into multiple messages.
+* **⏳ Marathon Runner:** Custom timeout logic allows processing of massive audio files (up to 15+ minutes) without breaking a sweat.
+* **🔒 Privacy Guard:** Works with self-hosted Whisper instances. Your voice data stays on your infrastructure.
+* **👥 Group Ready:** Drop it in a group chat, turn off Privacy Mode, and it will transcribe everything for everyone.
 
 ---
 
-## 🚀 Quick Start (Docker)
 
-The easiest way to run the bot is using Docker.
 
-### 1. Clone the repository
-```bash
-git clone [https://github.com/your-username/your-repo.git](https://github.com/your-username/your-repo.git)
-cd your-repo
+## 🛠️ Quick Start (Docker)
+
+Since the project is fully containerized, deployment is a breeze.
+
+### 1. Build the Image
+Navigate to your project folder and run:
+
+    docker build -t voice-transcriber .
+
+### 2. Run the Container
+Run the bot while passing your specific credentials as environment variables:
+
+    docker run -d \
+      --name voice-bot \
+      -e TELEGRAM_TOKEN=your_token_here \
+      -e BASE_URL=https://your-domain.com \
+      -e WHISPER_API_URL=http://your-whisper-api:9000/v1 \
+      -e PORT=8000 \
+      -p 8000:8000 \
+      voice-transcriber
+
+---
+
+## ⚙️ Environment Configuration
+
+| Variable | Importance | Description |
+| :--- | :--- | :--- |
+| **TELEGRAM_TOKEN** | Critical | Get this from [@BotFather](https://t.me/BotFather). |
+| **BASE_URL** | Critical | Your public HTTPS domain (Webhooks require SSL). |
+| **WHISPER_API_URL** | Critical | The endpoint for your Whisper ASR service. |
+| **PORT** | Optional | Internal port for the bot server (Default: 8000). |
+
+---
+
+## 🏗️ How It Works
+
+
+
+1.  **Trigger:** User sends a voice note. Telegram hits our Webhook.
+2.  **Fetch:** The bot grabs the file from Telegram's servers.
+3.  **Process:** The audio is streamed to the Whisper API.
+4.  **Polish:** The bot formats the text, splits it if it's too long, and replies directly to the user.
+
+---
+
+## 🤝 Contributing
+Got a cool idea or a bug fix? Feel free to fork the repo and open a Pull Request. Let's make transcription even better!
+
+## 📄 License
+This project is open-source and available under the **MIT License**.
+
+---
+<div align="center">
+  Built with ❤️ by AI enthusiasts.
+</div>
