@@ -97,7 +97,7 @@ async def handle_voice(message: types.Message):
                 await asyncio.sleep(0.5) 
         else:
             # Short message - send as is
-            await message.reply(f"📝 {text}")
+            await message.reply(f"{text}")
             
     except Exception as e:
         logger.error(f"Handler Error: {e}")
