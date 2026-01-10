@@ -8,6 +8,7 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.enums import ContentType
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
+
 # ==============================================================================
 # 1. CONFIGURATION
 # ==============================================================================
