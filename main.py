@@ -7,6 +7,7 @@ import aiohttp
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.enums import ContentType
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from groq import AsyncGroq
 
 
 # ==============================================================================
@@ -19,6 +20,7 @@ logger = logging.getLogger(__name__)
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 BASE_URL = os.getenv("BASE_URL")
 WHISPER_API_URL = os.getenv("WHISPER_API_URL")
+GROQ_WHISPER_API_KEY = os.getenv("GROQ_WHISPER_API_KEY")
 
 # --- DYNAMIC PORT CONFIGURATION ---
 WEB_SERVER_PORT = int(os.getenv("PORT", 8000))
@@ -26,12 +28,11 @@ WEB_SERVER_HOST = "0.0.0.0"
 WEBHOOK_PATH = "/webhook"
 
 # Validation
-if not TELEGRAM_TOKEN or not BASE_URL or not WHISPER_API_URL:
-    logger.error("❌ MISSING VARIABLES! Check TELEGRAM_TOKEN, BASE_URL, WHISPER_API_URL")
+if not TELEGRAM_TOKEN or not BASE_URL or not GROQ_WHISPER_API_KEY:
+    logger.error("❌ MISSING VARIABLES! Check TELEGRAM_TOKEN, BASE_URL, GROQ_WHISPER_API_KEY")
     sys.exit(1)
 
 WEBHOOK_URL = f"{BASE_URL}{WEBHOOK_PATH}"
-TRANSCRIPTION_ENDPOINT = f"{WHISPER_API_URL}/audio/transcriptions"
 
 # --- TIMEOUT SETTINGS ---
 # 15 minutes (900 seconds)
@@ -45,12 +46,11 @@ dp = Dispatcher()
 # ==============================================================================
 
 async def transcribe_audio(file_url: str) -> str:
-    # Custom timeout for long files
+    """Download audio from Telegram and transcribe it using the Groq Whisper API."""
     timeout_config = aiohttp.ClientTimeout(total=WHISPER_TIMEOUT_SECONDS)
 
     async with aiohttp.ClientSession(timeout=timeout_config) as session:
         try:
-            # Step A: Download
             async with session.get(file_url) as response:
                 if response.status != 200:
                     return f"❌ Download Error: {response.status}"
@@ -58,25 +58,21 @@ async def transcribe_audio(file_url: str) -> str:
         except Exception as e:
             return f"❌ Connection Error (Telegram): {e}"
 
-        # Step B: Prepare for Whisper
-        form_data = aiohttp.FormData()
-        form_data.add_field('file', audio_data, filename='voice.ogg')
-        form_data.add_field('model', 'whisper-1')
-        form_data.add_field('response_format', 'text')
-
-        try:
-            # Step C: Send to Whisper
-            async with session.post(TRANSCRIPTION_ENDPOINT, data=form_data) as resp:
-                if resp.status == 200:
-                    return await resp.text()
-                else:
-                    return f"❌ Whisper Error ({resp.status})"
-        except asyncio.TimeoutError:
-            logger.error("Whisper Request Timed Out")
-            return "❌ Error: Time limit exceeded (15 min)."
-        except Exception as e:
-            logger.error(f"Whisper Connection Error: {e}")
-            return "❌ Cannot reach Whisper container."
+    try:
+        client = AsyncGroq(api_key=GROQ_WHISPER_API_KEY)
+        transcription = await client.audio.transcriptions.create(
+            file=("voice.ogg", audio_data),
+            model="whisper-large-v3",
+            temperature=0,
+            response_format="verbose_json",
+        )
+        return transcription.text
+    except asyncio.TimeoutError:
+        logger.error("Groq Whisper Request Timed Out")
+        return "❌ Error: Time limit exceeded (15 min)."
+    except Exception as e:
+        logger.error(f"Groq Whisper Error: {e}")
+        return "❌ Cannot reach Groq Whisper API."
 
 @dp.message(F.content_type == ContentType.VOICE)
 async def handle_voice(message: types.Message):
