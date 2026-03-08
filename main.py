@@ -21,6 +21,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 BASE_URL = os.getenv("BASE_URL")
 WHISPER_API_URL = os.getenv("WHISPER_API_URL")
 GROQ_WHISPER_API_KEY = os.getenv("GROQ_WHISPER_API_KEY")
+_TOPIC_ID_STR = os.getenv("TOPIC_ID")
+TOPIC_ID = int(_TOPIC_ID_STR) if _TOPIC_ID_STR else None
 
 # --- DYNAMIC PORT CONFIGURATION ---
 WEB_SERVER_PORT = int(os.getenv("PORT", 8000))
@@ -76,6 +78,8 @@ async def transcribe_audio(file_url: str) -> str:
 
 @dp.message(F.content_type == ContentType.VOICE)
 async def handle_voice(message: types.Message):
+    if TOPIC_ID is not None and message.message_thread_id != TOPIC_ID:
+        return
     await bot.send_chat_action(message.chat.id, action="typing")
     try:
         file = await bot.get_file(message.voice.file_id)
@@ -102,6 +106,8 @@ async def handle_voice(message: types.Message):
 
 @dp.message()
 async def handle_start(message: types.Message):
+    if TOPIC_ID is not None and message.message_thread_id != TOPIC_ID:
+        return
     if message.chat.type == "private":
         await message.reply("👋 Send me a voice message!")
 

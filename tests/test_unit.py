@@ -163,3 +163,128 @@ async def test_transcribe_audio_groq_key_passed():
         await main.transcribe_audio("https://example.com/voice.ogg")
 
     mock_async_groq.assert_called_once_with(api_key=main.GROQ_WHISPER_API_KEY)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for handler tests
+# ---------------------------------------------------------------------------
+
+def _make_message(thread_id=None, chat_type="private"):
+    """Return a mock aiogram Message with configurable thread_id and chat type."""
+    message = MagicMock()
+    message.message_thread_id = thread_id
+    message.chat.id = 100
+    message.chat.type = chat_type
+    message.reply = AsyncMock()
+    message.voice = MagicMock()
+    message.voice.file_id = "file123"
+    return message
+
+
+# ---------------------------------------------------------------------------
+# handle_voice – TOPIC_ID filtering
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_handle_voice_no_topic_id_processes_message():
+    """When TOPIC_ID is None, handle_voice processes any voice message."""
+    message = _make_message(thread_id=None)
+    file_mock = MagicMock()
+    file_mock.file_path = "voices/file.ogg"
+
+    with patch.object(main, "TOPIC_ID", None), \
+         patch.object(main.bot, "send_chat_action", new=AsyncMock()), \
+         patch.object(main.bot, "get_file", new=AsyncMock(return_value=file_mock)), \
+         patch("main.transcribe_audio", new=AsyncMock(return_value="hello")):
+        await main.handle_voice(message)
+
+    message.reply.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_matching_topic_id_processes_message():
+    """When TOPIC_ID matches message.message_thread_id, message is processed."""
+    message = _make_message(thread_id=42)
+    file_mock = MagicMock()
+    file_mock.file_path = "voices/file.ogg"
+
+    with patch.object(main, "TOPIC_ID", 42), \
+         patch.object(main.bot, "send_chat_action", new=AsyncMock()), \
+         patch.object(main.bot, "get_file", new=AsyncMock(return_value=file_mock)), \
+         patch("main.transcribe_audio", new=AsyncMock(return_value="hello")):
+        await main.handle_voice(message)
+
+    message.reply.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_wrong_topic_id_ignores_message():
+    """When TOPIC_ID is set but does not match, handle_voice silently ignores the message."""
+    message = _make_message(thread_id=99)
+    file_mock = MagicMock()
+    file_mock.file_path = "voices/file.ogg"
+
+    with patch.object(main, "TOPIC_ID", 42), \
+         patch.object(main.bot, "send_chat_action", new=AsyncMock()) as mock_action, \
+         patch.object(main.bot, "get_file", new=AsyncMock(return_value=file_mock)), \
+         patch("main.transcribe_audio", new=AsyncMock(return_value="hello")):
+        await main.handle_voice(message)
+
+    message.reply.assert_not_awaited()
+    mock_action.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_topic_id_set_no_thread_ignores_message():
+    """When TOPIC_ID is set but message has no thread_id (None), message is ignored."""
+    message = _make_message(thread_id=None)
+
+    with patch.object(main, "TOPIC_ID", 42), \
+         patch.object(main.bot, "send_chat_action", new=AsyncMock()) as mock_action:
+        await main.handle_voice(message)
+
+    message.reply.assert_not_awaited()
+    mock_action.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# handle_start – TOPIC_ID filtering
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_handle_start_no_topic_id_replies_in_private():
+    """When TOPIC_ID is None, handle_start replies in private chats."""
+    message = _make_message(thread_id=None, chat_type="private")
+
+    with patch.object(main, "TOPIC_ID", None):
+        await main.handle_start(message)
+
+    message.reply.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_handle_start_matching_topic_id_does_not_block():
+    """When TOPIC_ID matches in a supergroup topic, handle_start passes the filter.
+
+    In a real supergroup with Topics, chat.type is 'supergroup' so the bot
+    does not reply (handle_start only replies in private chats), but the topic
+    filter itself must not block the message.
+    """
+    message = _make_message(thread_id=42, chat_type="supergroup")
+
+    with patch.object(main, "TOPIC_ID", 42):
+        await main.handle_start(message)
+
+    # No reply because it is a group, NOT because the topic filter blocked it.
+    message.reply.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_handle_start_wrong_topic_id_ignores_message():
+    """When TOPIC_ID is set but does not match, handle_start silently ignores the message."""
+    message = _make_message(thread_id=99, chat_type="private")
+
+    with patch.object(main, "TOPIC_ID", 42):
+        await main.handle_start(message)
+
+    message.reply.assert_not_awaited()
