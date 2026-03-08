@@ -66,6 +66,7 @@ Control the bot using Environment Variables.
 | **BASE_URL** | ✅ | Your public HTTPS domain. **Must be SSL** (Telegram Webhooks requirement). |
 | **WHISPER_API_URL** | ✅ | The address of your Speech-to-Text backend (see below). |
 | **PORT** | ❌ | Internal app port (Default: `8000`). |
+| **TOPIC_ID** | ❌ | If set, the bot only responds to messages from this Telegram topic (thread) ID. Useful for supergroups with Topics (Forum mode) where you want the bot to respond only to a specific topic. Messages from other topics are silently ignored. |
 
 ---
 
