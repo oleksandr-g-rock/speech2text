@@ -11,7 +11,8 @@ from groq import AsyncGroq
 # ==============================================================================
 # 1. CONFIGURATION
 # ==============================================================================
-logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+# Logging is fully disabled: nothing is written anywhere.
+logging.disable(logging.CRITICAL)
 logger = logging.getLogger(__name__)
 
 # --- ENV VARIABLES ---
