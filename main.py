@@ -2,11 +2,9 @@ import os
 import sys
 import logging
 import asyncio
-from aiohttp import web
 import aiohttp
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.enums import ContentType
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 from groq import AsyncGroq
 
 
@@ -18,23 +16,15 @@ logger = logging.getLogger(__name__)
 
 # --- ENV VARIABLES ---
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-BASE_URL = os.getenv("BASE_URL")
 WHISPER_API_URL = os.getenv("WHISPER_API_URL")
 GROQ_WHISPER_API_KEY = os.getenv("GROQ_WHISPER_API_KEY")
 _TOPIC_ID_STR = os.getenv("TOPIC_ID")
 TOPIC_ID = int(_TOPIC_ID_STR) if _TOPIC_ID_STR else None
 
-# --- DYNAMIC PORT CONFIGURATION ---
-WEB_SERVER_PORT = int(os.getenv("PORT", 8000))
-WEB_SERVER_HOST = "0.0.0.0"
-WEBHOOK_PATH = "/webhook"
-
 # Validation
-if not TELEGRAM_TOKEN or not BASE_URL or not GROQ_WHISPER_API_KEY:
-    logger.error("❌ MISSING VARIABLES! Check TELEGRAM_TOKEN, BASE_URL, GROQ_WHISPER_API_KEY")
+if not TELEGRAM_TOKEN or not GROQ_WHISPER_API_KEY:
+    logger.error("❌ MISSING VARIABLES! Check TELEGRAM_TOKEN, GROQ_WHISPER_API_KEY")
     sys.exit(1)
-
-WEBHOOK_URL = f"{BASE_URL}{WEBHOOK_PATH}"
 
 # --- TIMEOUT SETTINGS ---
 # 15 minutes (900 seconds)
@@ -112,28 +102,15 @@ async def handle_start(message: types.Message):
         await message.reply("👋 Send me a voice message!")
 
 # ==============================================================================
-# 3. WEBHOOK LIFECYCLE & SERVER START
+# 3. START (LONG POLLING — no domain, no HTTPS, no open port needed)
 # ==============================================================================
 
-async def on_startup(bot: Bot):
-    logger.info(f"🔗 Setting Webhook to: {WEBHOOK_URL}")
-    await bot.set_webhook(WEBHOOK_URL)
-
-async def on_shutdown(bot: Bot):
-    logger.info("🛑 Removing Webhook")
-    await bot.delete_webhook()
-
-def main():
-    dp.startup.register(on_startup)
-    dp.shutdown.register(on_shutdown)
-
-    app = web.Application()
-    webhook_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
-    webhook_handler.register(app, path=WEBHOOK_PATH)
-    setup_application(app, dp, bot=bot)
-
-    logger.info(f"🚀 Starting server on PORT: {WEB_SERVER_PORT}")
-    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
+async def main():
+    # Remove the old webhook, otherwise getUpdates fails with 409 Conflict.
+    # drop_pending_updates=False keeps voice messages that arrived during the switch.
+    await bot.delete_webhook(drop_pending_updates=False)
+    logger.info("🚀 Starting long polling")
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
