@@ -22,10 +22,16 @@ GROQ_WHISPER_API_KEY = os.getenv("GROQ_WHISPER_API_KEY")
 _TOPIC_ID_STR = os.getenv("TOPIC_ID")
 TOPIC_ID = int(_TOPIC_ID_STR) if _TOPIC_ID_STR else None
 
+# Whitelist: comma-separated Telegram user IDs allowed to use the bot,
+# e.g. "111,222,333". If empty, the bot ignores EVERYONE (fail-closed).
+ALLOWED_IDS = {
+    int(x) for x in os.getenv("MY_TELEGRAM_ID", "").replace(" ", "").split(",") if x
+}
+
 # Validation
 if not TELEGRAM_TOKEN or not GROQ_WHISPER_API_KEY:
-    logger.error("❌ MISSING VARIABLES! Check TELEGRAM_TOKEN, GROQ_WHISPER_API_KEY")
-    sys.exit(1)
+    # Logging is disabled, so exit with a message (printed to stderr, no secrets).
+    sys.exit("❌ MISSING VARIABLES! Check TELEGRAM_TOKEN, GROQ_WHISPER_API_KEY")
 
 # --- TIMEOUT SETTINGS ---
 # 15 minutes (900 seconds)
@@ -67,7 +73,7 @@ async def transcribe_audio(file_url: str) -> str:
         logger.error(f"Groq Whisper Error: {e}")
         return "❌ Cannot reach Groq Whisper API."
 
-@dp.message(F.content_type == ContentType.VOICE)
+@dp.message(F.content_type == ContentType.VOICE, F.from_user.id.in_(ALLOWED_IDS))
 async def handle_voice(message: types.Message):
     if TOPIC_ID is not None and message.message_thread_id != TOPIC_ID:
         return
@@ -95,7 +101,7 @@ async def handle_voice(message: types.Message):
         logger.error(f"Handler Error: {e}")
         await message.reply("❌ Error processing request.")
 
-@dp.message()
+@dp.message(F.from_user.id.in_(ALLOWED_IDS))
 async def handle_start(message: types.Message):
     if TOPIC_ID is not None and message.message_thread_id != TOPIC_ID:
         return
